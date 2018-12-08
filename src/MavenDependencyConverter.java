@@ -1,54 +1,91 @@
 package src;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 
 public class MavenDependencyConverter {
-    static final String BAD_DEP_ERROR = "Malformed dependency";
-    static final String MAVEN_JAR =
-        "maven_jar(\n" +
-        "    name = \"%s\",\n" +
-        "    artifact = \"%s:%s:%s\"\n" +
-        ")";
-    public static void main(String[] args) {
+    private static Logger logger = LogManager.getRootLogger();
+
+    private final File file;
+    private final String dependency;
+
+    public MavenDependencyConverter(File file) {
+        this(file, null);
+    }
+
+    public MavenDependencyConverter(String dependency) {
+        this(null, dependency);
+    }
+
+    private MavenDependencyConverter(File file, String dependency) {
+        this.file = file;
+        this.dependency = dependency;
+    }
+
+    private Document parseDocument() {
         try {
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
             DocumentBuilder builder = factory.newDocumentBuilder();
-            File file = new File(args[0]);
-            Document doc = builder.parse(file);
+            if (file != null) {
+                return builder.parse(file);
+            } else if (dependency != null) {
+                return builder.parse(new ByteArrayInputStream(dependency.getBytes()));
+            }
+            return null;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public MavenDependency parse() {
+            Document doc = parseDocument();
             Element root = doc.getDocumentElement();
             NodeList groupIdNodes = root.getElementsByTagName("groupId");
             if (groupIdNodes.getLength() != 1) {
-                System.out.println(BAD_DEP_ERROR);
-                return;
+                return null;
             }
             NodeList artifactIdNodes = root.getElementsByTagName("artifactId");
             if (artifactIdNodes.getLength() != 1) {
-                System.out.println(BAD_DEP_ERROR);
-                return;
+                return null;
             }
             NodeList versionNodes = root.getElementsByTagName("version");
             if (versionNodes.getLength() != 1) {
-                System.out.println(BAD_DEP_ERROR);
-                return;
+                return null;
             }
             String groupId = groupIdNodes.item(0).getTextContent();
             String artifactId = artifactIdNodes.item(0).getTextContent();
             String version = versionNodes.item(0).getTextContent();
-            String name = groupId.replaceAll("\\.", "_") + "_" + artifactId;
-            System.out.println(String.format(MAVEN_JAR, name, groupId, artifactId, version));
+            return new MavenDependency(
+                groupId,
+                artifactId,
+                version);
+    }
+
+    public static void main(String[] args) {
+        try {
+            File file = new File(args[0]);
+            MavenDependencyConverter converter = new MavenDependencyConverter(file);
+            MavenDependency dependency = converter.parse();
+            if (dependency == null) {
+                logger.error("Malformed dependency");
+                return;
+            }
+            logger.info(dependency.asMavenJarStatement());
         } catch (Exception e) {
             StringWriter sw = new StringWriter();
             PrintWriter pw = new PrintWriter(sw);
             e.printStackTrace(pw);
-            System.out.println(sw.toString());
+            logger.error(sw.toString());
         }
     }
 }
