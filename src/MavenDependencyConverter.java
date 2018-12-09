@@ -10,8 +10,6 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.ByteArrayInputStream;
 import java.io.File;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 
 public class MavenDependencyConverter {
     private static Logger logger = LogManager.getRootLogger();
@@ -82,10 +80,7 @@ public class MavenDependencyConverter {
             }
             logger.info(dependency.asMavenJarStatement());
         } catch (Exception e) {
-            StringWriter sw = new StringWriter();
-            PrintWriter pw = new PrintWriter(sw);
-            e.printStackTrace(pw);
-            logger.error(sw.toString());
+            logger.error("Could not parse file", e);
         }
     }
 }

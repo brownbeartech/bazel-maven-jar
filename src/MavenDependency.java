@@ -2,7 +2,7 @@ package src;
 
 public class MavenDependency {
     static final String MAVEN_JAR =
-        "maven_jar(\n" +
+        "\nmaven_jar(\n" +
         "    name = \"%s\",\n" +
         "    artifact = \"%s:%s:%s\"\n" +
         ")";
